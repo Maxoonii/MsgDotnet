@@ -2,19 +2,22 @@
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
-namespace ToDoList
+
+namespace Message
 {
     class Program
     {
         private static event RequestHandler Request;
 
-        private static Todo[] todos = new Todo[5];
+        private static Msg[] msgs = new Msg[5];
 
         private static int count = 0;
+
+        private static int c = 1;
 
         static void Main(string[] args)
         {
@@ -63,20 +66,20 @@ namespace ToDoList
                     }
                     SendPage(res, "index.html");
                     break;
-                case "/todo-list":
+                case "/message":
                     if (req.HttpMethod != "GET")
                     {
                         SendBadReq(res);
                         break;
                     }
                     res.StatusCode = 200;
-                    res.ContentType = "text/json";
-                    Todo[] temp_todo = new Todo[count];
-                    Array.Copy(todos, temp_todo, count);
-                    res.OutputStream.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(temp_todo)));
+                    res.ContentType = "application/json";
+                    Msg[] temp_msg = new Msg[count];
+                    Array.Copy(msgs, temp_msg, count);
+                    res.OutputStream.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(temp_msg)));
                     res.Close();
                     break;
-                case "/add-todo":
+                case "/add-msg":
                     if (req.HttpMethod != "POST")
                     {
                         SendBadReq(res);
@@ -93,15 +96,16 @@ namespace ToDoList
                         }
                         buffer[i] = (byte)t;
                     }
-                    Todo temp = JsonConvert.DeserializeObject<Todo>(Encoding.UTF8.GetString(buffer));
+                    Msg temp = JsonSerializer.Deserialize<Msg>(Encoding.UTF8.GetString(buffer));
+                    temp.nomer = c++;
                     if (count == 5)
                     {
-                        for (int i = todos.Length - 1; i > 0; i--)
-                            todos[i] = todos[i - 1];
-                        todos[0] = temp;
+                        for (int i = msgs.Length - 1; i > 0; i--)
+                            msgs[i] = msgs[i - 1];
+                        msgs[0] = temp;
                     }
                     else
-                        todos[count++] = temp;
+                        msgs[count++] = temp;
                     res.StatusCode = 202;
                     res.Close();
                     break;
@@ -132,16 +136,13 @@ namespace ToDoList
             res.OutputStream.Write(reader.ReadBytes((int)reader.BaseStream.Length), 0, (int)reader.BaseStream.Length);
             res.Close();
         }
-
-#pragma warning disable CS0649
-        class Todo
+        class Msg
         {
-            public string text;
+            public int nomer{get;set;}
+            public string text{get;set;}
 
-            public bool completed;
+            
         }
-#pragma warning restore CS0649
-
         delegate void RequestHandler(HttpListenerRequest req, HttpListenerResponse res);
     }
 }
